@@ -14,11 +14,35 @@
 ```python
 import win32com.client
 
-# 晚期绑定（推荐）
+# 晚期绑定（推荐，无需类型库）
 wps = win32com.client.Dispatch('Kwps.Application')
 
-# 或早期绑定（需提前引用类型库）
+# 或早期绑定（需提前引用类型库，可能有缓存问题）
 # wps = win32com.client.Dispatch('WPS.Application')
+```
+
+### 32位 / 64位兼容性
+
+这是最常见的连接失败原因：
+
+| Python 位数 | WPS 位数 | 能否连接 |
+|-------------|----------|---------|
+| 32-bit | 32-bit（WPS个人版默认） | ✅ |
+| 64-bit | 64-bit（WPS专业版可选） | ✅ |
+| **64-bit** | **32-bit** | **❌ 失败** |
+
+如果连接 `Kwps.Application` 失败：
+1. 检查 Python 位数（`python -c "import struct; print(struct.calcsize('P') * 8)"`）
+2. 如果 Python 是 64-bit，WPS 是 32-bit → 改用 32-bit Python 运行
+3. 或者安装 64-bit 版本 WPS（专业版支持）
+
+### 连接到已有 WPS 实例
+
+```python
+try:
+    wps = win32com.client.GetActiveObject('Kwps.Application')
+except:
+    wps = win32com.client.Dispatch('Kwps.Application')
 ```
 
 ## 属性

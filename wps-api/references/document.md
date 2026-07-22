@@ -22,6 +22,15 @@ doc.ExportAsFixedFormat(r'C:\output.pdf', 17)  # 17 = wdExportFormatPDF
 doc.Close(SaveChanges=False)   # False=不保存, True=保存
 ```
 
+### 必须的清理模式
+
+```python
+doc.Close()    # 关闭文档，释放文件锁
+wps.Quit()     # 退出 WPS，杀掉 COM 进程
+```
+
+在业务代码中始终使用 `try/finally` 确保清理执行，否则脚本异常退出后 WPS 进程残留会导致下次无法连接。
+
 ### Open 完整参数
 
 ```python
