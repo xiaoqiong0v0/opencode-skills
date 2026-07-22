@@ -49,6 +49,19 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 
 本地插件自动加载，无需注册。npm 插件在 `opencode.json` 中添加包名后自动安装。
 
+### 技能发现路径
+
+除了本地技能目录，还可以在 `opencode.json` 中配置额外路径：
+
+```json
+{
+  "skills": {
+    "paths": ["~/community-skills", "/shared/team-skills"],
+    "urls": ["https://example.com/skills/my-skill"]
+  }
+}
+```
+
 ### 加载顺序
 
 所有来源的插件按以下顺序加载，同名钩子全部执行：
@@ -58,7 +71,7 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 3. **全局插件目录** `~/.config/opencode/plugins/`
 4. **项目插件目录** `.opencode/plugins/`
 
-同名 npm 包只加载一次；本地插件和同名的 npm 插件各自独立加载。
+同名 npm 包只加载一次；本地插件和同名的 npm 插件各自独立加载。插件可通过 V2 API 在运行时动态注册/卸载技能和命令（见 [v2-plugin.md](references/v2-plugin.md)）。
 
 ## 深入阅读
 
@@ -70,6 +83,7 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 | 发布到 npm、包结构、安装方式 | [npm-plugin.md](npm-plugin.md) |
 | 工具定义 API、参数、context | [tool-definition.md](tool-definition.md) |
 | 事件钩子、工具拦截、会话管理 | [hooks.md](hooks.md) |
+| V2 Plugin API（运行时注册技能/命令/参考） | [v2-plugin.md](references/v2-plugin.md) |
 | 实战示例（通知、.env保护、注入变量、压缩） | [examples.md](references/examples.md) |
 | 结构化日志（client.app.log） | [logging.md](references/logging.md) |
 

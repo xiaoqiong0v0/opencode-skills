@@ -95,6 +95,27 @@ export const MyPlugin = async () => {
 | `permission.replied` | 用户回复权限时 |
 | `command.executed` | TUI 命令执行后 |
 
+### 消息钩子（V1 插件）
+| 钩子 | 触发时机 | input/output |
+|------|---------|-------------|
+| `chat.message` | 新消息到达时 | 可修改 `output.message` 和 `output.parts` |
+| `chat.params` | 修改 LLM 参数 | 可设置 `temperature`、`topP`、`topK`、`maxOutputTokens` |
+| `chat.headers` | 修改 LLM 请求头 | 可注入自定义 `headers` |
+
+### 工具定义钩子
+| 钩子 | 触发时机 | 说明 |
+|------|---------|------|
+| `tool.definition` | 修改工具定义发送给 LLM 前 | 可修改 `description` 和 `parameters` |
+
+### 实验性钩子
+| 钩子 | 触发时机 | 说明 |
+|------|---------|------|
+| `experimental.chat.messages.transform` | 修改发送给 LLM 的消息列表 | 可增删改消息 |
+| `experimental.chat.system.transform` | 修改系统提示词 | 可追加 system prompt |
+| `experimental.compaction.autocontinue` | 压缩后是否自动继续 | 设置 `output.enabled = false` 跳过自动继续 |
+| `experimental.provider.small_model` | 为 provider 选择小模型 | 返回轻量模型用于简单任务 |
+| `experimental.text.complete` | 文本补全 | 注入自定义补全文本 |
+
 ### 其他
 | 事件 | 触发时机 |
 |------|---------|

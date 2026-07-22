@@ -41,7 +41,8 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 | `abort` | `AbortSignal` | 取消信号，支持超时/手动取消 |
 | `extra` | `object` | 模型信息（`model.id`、`model.providerID` 等） |
 | `time` | `number` | 时间戳 |
-| `metadata({ title })` | `function` | 设置工具结果标题（在 UI 中显示） |
+| `metadata({ title, metadata })` | `function` | 设置工具结果标题和附加元数据 |
+| `ask(input)` | `function` | 运行时向用户询问权限（`{ permission, patterns, always, metadata }`） |
 
 **注意：** `execute` 的 context 中**没有** `parentID`。需要跟踪父子会话关系，请通过 `session.created` 事件监听（见 [hooks.md](hooks.md) 的会话管理章节）。
 
@@ -68,9 +69,25 @@ tool.schema.array(tool.schema.string())  // 数组
 - 插件工具与内置工具同名时，**插件工具优先**
 - 多插件注册同名工具时，**加载顺序决定优先级**（全局 > 项目 > 先加载者优先）
 
+## ToolResult
+
+`execute` 函数的返回值可以是字符串或对象：
+
+```ts
+// 简单字符串
+return "处理完成"
+
+// 结构化结果（附加标题和附件）
+return {
+  title: "查询结果",
+  output: "表格数据...",
+  metadata: { rowCount: 42 },
+  attachments: [{ type: "file", mime: "text/csv", url: "..." }],
+}
+```
+
 ## 注意事项
 
 - `description` 是模型决定是否调用的关键——写清楚工具做什么、什么时候用
-- 函数的返回值必须是字符串，复杂结构需自行序列化（如 `JSON.stringify`）
 - 错误处理：`execute` 内抛出的异常会被 OpenCode 捕获并展示给用户
 - 工具拦截（`tool.execute.before` / `tool.execute.after`）的 `input`/`output` 参数见 [hooks.md](hooks.md)
