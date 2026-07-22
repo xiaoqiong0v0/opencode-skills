@@ -92,6 +92,31 @@ export const MyPlugin: Plugin = {
 
 ## CommandHooks — 动态注册命令
 
+命令有多种注册方式，按需选择：
+
+### 方式一：V1 config 钩子（推荐，简洁）
+
+V1 插件的 `config` 钩子可直接修改 `config.command`：
+
+```ts
+export const MyPlugin = async () => {
+  return {
+    config: async (config) => {
+      config.command = config.command ?? {}
+      config.command["my-cmd"] = {
+        template: "执行 {{input}} 并返回结果",
+        description: "自定义命令示例",
+        agent: "build",
+      }
+    },
+  }
+}
+```
+
+命令在 OpenCode TUI 中通过 `/my-cmd` 触发，`{{input}}` 为用户输入的参数。
+
+### 方式二：V2 command.transform（可增删改查）
+
 ```ts
 export const MyPlugin: Plugin = {
   id: "my-plugin",
@@ -101,17 +126,37 @@ export const MyPlugin: Plugin = {
       const all = draft.list()
 
       // 获取特定命令
-      const cmd = draft.get("my-command")
+      const cmd = draft.get("my-cmd")
 
-      // 添加或更新命令
-      if (!cmd) {
-        // V2 命令通过 config.command 定义，插件通过 transform 修改
+      // 修改已有命令
+      if (cmd) {
+        draft.update("my-cmd", (cmd) => {
+          cmd.description = "更新后的描述"
+        })
       }
 
+      // V2 无法直接添加命令，需要结合 V1 config 钩子
+      // 或通过 reload 重新加载配置
+
       // 移除命令
-      draft.remove("obsolete-command")
+      draft.remove("obsolete-cmd")
     })
   },
+}
+```
+
+### 命令完整结构
+
+```ts
+type CommandInfo = {
+  name: string        // 命令名称（用于 / 触发）
+  template: string    // 命令模板（支持 {{input}} 占位符）
+  description?: string // 命令描述
+  agent?: string      // 指定执行的 agent
+  model?: string      // 指定模型
+  variant?: string    // 模型 variant
+  subtask?: boolean   // 是否以子任务执行
+  hints?: string[]    // 触发提示词
 }
 ```
 

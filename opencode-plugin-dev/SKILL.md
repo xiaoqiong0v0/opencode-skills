@@ -103,5 +103,6 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
    文件后缀使用 `.js` 或 `.ts` 均可，OpenCode 自动处理。
 3. **依赖管理**：本地插件如需外部包，在配置目录下创建 `package.json`，OpenCode 启动时自动 `bun install`。
 4. **调试技巧**：插件中的 `console.log` 输出可以在 OpenCode 的 TUI 或日志中查看。修改插件后重启 OpenCode 或重载插件目录即可生效。
+5. **config 钩子**：V1 插件的 `config` 钩子可修改运行时的配置对象，常用于动态注册命令（`config.command`），见 [v2-plugin.md](references/v2-plugin.md) 的 CommandHooks 章节。
 
 详细文档：https://opencode.ai/docs/plugins/ (English)
