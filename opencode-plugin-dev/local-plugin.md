@@ -33,7 +33,27 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 }
 ```
 
-参数 `{ project, client, $, directory, worktree }` 全部可选，按需解构即可。
+参数 `{ project, client, $, directory, worktree }` 全部可选，按需解构即可：
+
+| 参数 | 说明 |
+|------|------|
+| `project` | 当前项目信息 |
+| `directory` | 当前工作目录 |
+| `worktree` | Git 工作树路径 |
+| `client` | OpenCode SDK 客户端，用于 AI 交互和结构化日志 |
+| `$` | Bun 的 Shell API，用于执行命令 |
+
+TypeScript 版本：
+
+```ts
+import type { Plugin } from "@opencode-ai/plugin"
+
+export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
+  return {
+    // 类型安全的钩子实现
+  }
+}
+```
 
 ## 文件组织
 

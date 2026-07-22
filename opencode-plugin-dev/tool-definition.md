@@ -73,3 +73,4 @@ tool.schema.array(tool.schema.string())  // 数组
 - `description` 是模型决定是否调用的关键——写清楚工具做什么、什么时候用
 - 函数的返回值必须是字符串，复杂结构需自行序列化（如 `JSON.stringify`）
 - 错误处理：`execute` 内抛出的异常会被 OpenCode 捕获并展示给用户
+- 工具拦截（`tool.execute.before` / `tool.execute.after`）的 `input`/`output` 参数见 [hooks.md](hooks.md)

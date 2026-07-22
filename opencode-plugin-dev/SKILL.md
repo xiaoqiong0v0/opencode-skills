@@ -49,6 +49,17 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 
 本地插件自动加载，无需注册。npm 插件在 `opencode.json` 中添加包名后自动安装。
 
+### 加载顺序
+
+所有来源的插件按以下顺序加载，同名钩子全部执行：
+
+1. **全局配置文件** `~/.config/opencode/opencode.json` 中的 `plugin` 数组
+2. **项目配置文件** `opencode.json` 中的 `plugin` 数组
+3. **全局插件目录** `~/.config/opencode/plugins/`
+4. **项目插件目录** `.opencode/plugins/`
+
+同名 npm 包只加载一次；本地插件和同名的 npm 插件各自独立加载。
+
 ## 深入阅读
 
 根据具体需求选择子文档：
@@ -59,11 +70,23 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 | 发布到 npm、包结构、安装方式 | [npm-plugin.md](npm-plugin.md) |
 | 工具定义 API、参数、context | [tool-definition.md](tool-definition.md) |
 | 事件钩子、工具拦截、会话管理 | [hooks.md](hooks.md) |
+| 实战示例（通知、.env保护、注入变量、压缩） | [examples.md](references/examples.md) |
+| 结构化日志（client.app.log） | [logging.md](references/logging.md) |
 
 ## 重要原则
 
 1. **加载顺序**：全局配置 → 项目配置 → 全局插件 → 项目插件。同名工具时**插件优先**于内置工具。
-2. **TypeScript**：推荐使用 TypeScript，导入 `type Plugin` 获得类型安全。文件后缀使用 `.js`（OpenCode 自动处理）。
+2. **TypeScript**：推荐使用 TypeScript，从 `@opencode-ai/plugin` 导入类型获得类型安全：
+   ```ts
+   import type { Plugin } from "@opencode-ai/plugin"
+
+   export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
+     return {
+       // 类型安全的钩子实现
+     }
+   }
+   ```
+   文件后缀使用 `.js` 或 `.ts` 均可，OpenCode 自动处理。
 3. **依赖管理**：本地插件如需外部包，在配置目录下创建 `package.json`，OpenCode 启动时自动 `bun install`。
 4. **调试技巧**：插件中的 `console.log` 输出可以在 OpenCode 的 TUI 或日志中查看。修改插件后重启 OpenCode 或重载插件目录即可生效。
 

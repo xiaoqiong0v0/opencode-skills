@@ -109,7 +109,33 @@ export const MyPlugin = async () => {
 ### 实验性事件
 | 事件 | 触发时机 |
 |------|---------|
-| `experimental.session.compacting` | 会话压缩中（实验性） |
+| `experimental.session.compacting` | 会话压缩中，用于注入自定义上下文或替换压缩提示词 |
+
+## experimental.session.compacting
+
+在 LLM 生成续接摘要之前触发。可以向 `output.context` 注入领域特定上下文（默认压缩可能遗漏的信息），或通过设置 `output.prompt` 完全替换压缩提示词。
+
+```ts
+export const MyPlugin = async () => {
+  return {
+    "experimental.session.compacting": async (input, output) => {
+      // 注入额外上下文
+      output.context.push(`
+## 自定义上下文
+
+压缩时应保留的状态：
+- 当前任务状态
+- 重要决策记录
+`)
+
+      // 可选：完全替换压缩提示词
+      // output.prompt = "你的自定义提示词..."
+    },
+  }
+}
+```
+
+实战示例见 [examples.md](references/examples.md)。
 
 ## session.created 属性
 
