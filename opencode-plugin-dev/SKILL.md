@@ -87,6 +87,11 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 | 实战示例（通知、.env保护、注入变量、压缩） | [examples.md](references/examples.md) |
 | 结构化日志（client.app.log） | [logging.md](references/logging.md) |
 
+## 开发原则
+
+- **不知道怎么实现时，去看源码**：OpenCode 是开源项目（[github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)），type 定义在 `node_modules/@opencode-ai/plugin/dist/` 和 `@opencode-ai/sdk/dist/` 中。不确定 API 签名、事件字段、context 类型时，直接读对应版本的 `.d.ts` 文件，不要凭记忆或猜测写代码。
+- 插件代码中使用 `console.log` 调试，输出在 TUI 或日志中可见。
+
 ## 重要原则
 
 1. **加载顺序**：全局配置 → 项目配置 → 全局插件 → 项目插件。同名工具时**插件优先**于内置工具。
