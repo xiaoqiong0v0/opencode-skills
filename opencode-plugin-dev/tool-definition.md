@@ -44,7 +44,9 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 | `metadata({ title, metadata })` | `function` | 设置工具结果标题和附加元数据 |
 | `ask(input)` | `function` | 运行时向用户询问权限（`{ permission, patterns, always, metadata }`） |
 
-**注意：** `execute` 的 context 中**没有** `parentID`。需要跟踪父子会话关系，请通过 `session.created` 事件监听（见 [hooks.md](hooks.md) 的会话管理章节）。
+**注意：**
+- `metadata` 在某些 OpenCode 版本中可能为 `undefined`，调用时建议使用可选链：`context.metadata?.({ title: "结果" })`。
+- `execute` 的 context 中**没有** `parentID`。需要跟踪父子会话关系，请通过 `session.created` 事件监听（见 [hooks.md](hooks.md) 的会话管理章节）。
 
 ## 参数 Schema
 

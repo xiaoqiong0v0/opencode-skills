@@ -13,11 +13,14 @@
 
 ```json
 {
+  "type": "module",
   "dependencies": {
     "shescape": "^2.1.0"
   }
 }
 ```
+
+**必须添加 `"type": "module"`**，否则 Bun/Node.js 会将 `.js` 文件按 CommonJS 解析，`import`/`export` 语法直接报错。
 
 OpenCode 启动时自动运行 `bun install` 安装依赖。
 
@@ -55,6 +58,36 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 }
 ```
 
+## 模块初始化陷阱：Temporal Dead Zone（TDZ）
+
+模块顶层的 `const`/`let` 声明存在**暂时性死区（TDZ）**，在声明之前引用会抛出 `ReferenceError`。
+
+**错误示例（插件加载静默崩溃）：**
+
+```ts
+// ...
+loadCfg()       // ❌ 调用时 T 尚未初始化
+
+const TX = { ... }
+const T = () => { ... }  // T 定义在 loadCfg 之后
+```
+
+**正确做法：所有 `const` 定义必须在任何模块级调用之前：**
+
+```ts
+// ...
+const TX = { ... }
+const T = () => { ... }  // ✅ 先定义
+
+loadCfg()       // ✅ 调用时 T 已就绪
+```
+
+**推荐：用 `try/catch` 包裹模块级调用，异常时用 logger 记录：**
+
+```ts
+try { loadCfg() } catch (e) { log.error("初始化失败", e) }
+```
+
 ## 文件组织
 
 简单插件的所有逻辑写在一个文件里。复杂插件可以拆分为多个文件，入口文件导出插件：
@@ -70,5 +103,5 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 ## 注意
 
 - 修改插件文件后**重启 OpenCode** 或重新加载配置即可生效
-- 文件后缀可以是 `.js` 或 `.ts`（OpenCode 自动处理 TypeScript）
+- 文件后缀可以是 `.js` 或 `.ts`（OpenCode 自动处理 TypeScript）。但 `.ts` 文件的依赖必须在 `.opencode/package.json` 中声明，否则类型/模块解析会失败。复杂项目建议先编译为 `.js` 再部署。
 - 插件中的 `console.log`/`console.error` 输出会显示在 OpenCode 日志中

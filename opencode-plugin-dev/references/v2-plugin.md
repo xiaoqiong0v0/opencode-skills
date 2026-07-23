@@ -240,8 +240,10 @@ export const MyPlugin: Plugin = {
 await command.transform(async (draft) => {
   draft.remove("cmd")
 })
-await command.reload()  // 立即生效
+await command.reload()
 ```
+
+**注意：** `reload()` 在某些 OpenCode 版本中可能不生效，建议重启 OpenCode 验证命令是否注册成功。
 
 ## V1 vs V2 对比
 

@@ -189,7 +189,7 @@ export const MyPlugin = async () => {
   return {
     event: async ({ event }) => {
       if (event.type === "session.created") {
-        const { sessionID, parentID } = event.data
+        const { sessionID, parentID } = event.properties
         if (parentID) {
           // 子会话：记录父子关系
           childMap.set(sessionID, parentID)
@@ -206,14 +206,14 @@ export const MyPlugin = async () => {
       if (event.type === "session.updated") {
         // updated 频繁触发（消息更新、token 变化、摘要刷新等），
         // 仅在 Map 中不存在该 sessionID 时注册（首次见到的会话）
-        const { sessionID } = event.data
+        const { sessionID } = event.properties
         if (!parentMap.has(sessionID) && !childMap.has(sessionID)) {
           parentMap.set(sessionID, new Set())
         }
       }
 
       if (event.type === "session.deleted") {
-        const { sessionID } = event.data
+        const { sessionID } = event.properties
         // 清理子会话记录
         if (childMap.has(sessionID)) {
           const pid = childMap.get(sessionID)!
