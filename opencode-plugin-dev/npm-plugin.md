@@ -23,9 +23,12 @@ export const PluginName = async () => {
     /* tools or hooks */
   }
 }
+
+// npm 插件还需要默认导出
+export { PluginName as default }
 ```
 
-## 安装方式
+**npm 插件需要同时提供命名导出和默认导出**。命名导出供 `.opencode/plugins/` 本地加载使用，默认导出供 npm 加载器使用（`import()` 后读取 `mod.default`）。
 
 用户在 `opencode.json` 的 `plugin` 数组中添加包名：
 
@@ -39,7 +42,22 @@ OpenCode 启动时自动用 Bun 安装到 `~/.cache/opencode/node_modules/`。
 
 ## 依赖处理
 
-npm 插件的 `dependencies` 在 `package.json` 中声明，由 OpenCode 自动安装，用户无需手动操作。
+npm 插件的 `dependencies` 在 `package.json` 中声明，由 OpenCode 自动安装（`bun install --production`，**不安装 devDependencies**）。
+
+**关键：`@opencode-ai/plugin` 必须放在 `peerDependencies`**，它是 OpenCode 宿主提供的 SDK，不应作为外部依赖安装：
+
+```json
+{
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
+  "dependencies": {
+    "my-other-dep": "^1.0.0"
+  }
+}
+```
+
+运行时 `import { tool } from "@opencode-ai/plugin"` 会从 OpenCode 宿主环境解析。如果把 `@opencode-ai/plugin` 放在 `dependencies` 或 `devDependencies`，**bun 不会安装它**，插件加载会静默失败。
 
 ## 发布
 
@@ -55,6 +73,7 @@ npm publish --access public
 ## 注意事项
 
 - 插件包必须是 ESM（`"type": "module"`）
-- 入口文件导出必须使用 `export const` 命名导出（不是 `export default`）
+- 入口文件需要同时提供 `export const` 命名导出和 `export { Xxx as default }` 默认导出（两者缺一不可）
 - 确保 `files` 字段只包含需要发布的文件
 - 建议在发布前本地测试：先在 `opencode.json` 中用 `"plugin": ["file:./local-path"]` 测试
+- `@opencode-ai/plugin` 必须放在 `peerDependencies`，详见"依赖处理"章节
