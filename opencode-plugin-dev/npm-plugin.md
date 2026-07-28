@@ -70,6 +70,31 @@ npm version patch
 npm publish --access public
 ```
 
+## 本地测试与热覆盖
+
+发布前本地测试已发布的 npm 插件，无需反复 `npm version patch && npm publish`。核心思路：构建本地代码后覆盖 OpenCode 的包缓存。
+
+```powershell
+# 1. 本地构建
+npm run build
+
+# 2. 覆盖 OpenCode 包缓存（路径格式：~/.cache/opencode/packages/<包名>@latest/node_modules/<包名>/）
+$cacheDir = "$env:USERPROFILE\.cache\opencode\packages\@scope\plugin-name@latest\node_modules\@scope\plugin-name"
+
+if (Test-Path $cacheDir) {
+    Copy-Item -Recurse -Force "dist" "$cacheDir\"
+    Write-Host "覆盖完成: $cacheDir\dist" -ForegroundColor Green
+}
+
+# 3. 重启 OpenCode 使插件生效
+```
+
+**注意：** 缓存路径有两种可能（取决于版本）：
+- `~/.cache/opencode/packages/@scope/plugin-name@latest/node_modules/@scope/plugin-name/`
+- `~/.cache/opencode/packages/@scope/plugin-name/node_modules/@scope/plugin-name/`
+
+如果路径不存在说明该插件还没被 OpenCode 安装过，需要先配置 `opencode.json` 并启动一次。
+
 ## 注意事项
 
 - 插件包必须是 ESM（`"type": "module"`）
