@@ -88,6 +88,92 @@ return {
 }
 ```
 
+## 单工具多命令模式（CLI 风格）
+
+当插件的操作较多时，推荐**用一个工具承载全部操作，用 `command` 参数区分**，并通过 `help` 子命令向模型返回用法。效果类似命令行 CLI，减少工具数量、集中逻辑、省 token。
+
+### 基础结构
+
+```ts
+export const MyPlugin: Plugin = async () => {
+  return {
+    tool: {
+      cli: tool({
+        description: "统一命令行工具。执行任意子命令，先用 help 查看用法。",
+        args: {
+          command: tool.schema.string().describe("子命令名，用 'help' 查看全部用法"),
+          args: tool.schema.string().optional().describe("参数，空格分隔，如 '--name foo --verbose'"),
+        },
+        async execute(args, context) {
+          return handleCommand(args.command, args.args ?? "", context)
+        },
+      }),
+    },
+  }
+}
+
+async function handleCommand(cmd: string, raw: string, context: ToolContext): Promise<string> {
+  const tokens = raw.trim().split(/\s+/).filter(Boolean)
+  switch (cmd) {
+    case "help":
+      return HELP_TEXT          // 返回完整用法，引导模型正确调用
+    case "list":
+      return listItems()
+    case "add":
+      return addItem(tokens, context)
+    case "remove":
+      return removeItem(tokens)
+    default:
+      return `未知命令: ${cmd}\n\n${HELP_TEXT}`   // 未知命令也返回 help，引导自愈
+  }
+}
+```
+
+### 关键设计要点
+
+1. **`help` 必须返回完整、结构化的用法**（所有子命令、参数、示例），这是模型"自学"的主要途径：
+   ```ts
+   const HELP_TEXT = `
+   用法: cli <command> [args...]
+
+   子命令:
+     list                列出所有项
+     add --name <n>      添加项
+     remove <id>         删除项
+     help                显示此帮助
+
+   示例:
+     cli list
+     cli add --name "项目A"
+   `
+   ```
+
+2. **未知命令时返回 help** —— 让模型从错误中自愈，而不是抛异常。
+
+3. **参数解析要健壮**：手动解析 `--key value` 或复用 `node:util` 的 `parseArgs`：
+   ```ts
+   import { parseArgs } from "node:util"
+
+   const { values, positionals } = parseArgs({
+     args: tokens,
+     options: {
+       name: { type: "string" },
+       verbose: { type: "boolean", short: "v" },
+     },
+   })
+   ```
+
+### 何时用 / 何时不用
+
+| 场景 | 建议 |
+|------|------|
+| 操作多（>4 个）且共享状态/资源 | ✅ 单工具多命令 |
+| 操作少且相互独立 | ❌ 拆成多个工具更清晰 |
+| 需要模型并行调用不同操作 | ⚠️ 单工具会互相排队 |
+| 参数差异大（如 add 需要 5 个参数，list 只要 1 个） | ✅ 单工具 + help 引导最合适 |
+
+**原则：** 工具数量控制在 2 个以内（一个主工具 + 一个可选辅助）。多于 2 个时，考虑合并为单工具多命令。
+
 ## 注意事项
 
 - `description` 是模型决定是否调用的关键——写清楚工具做什么、什么时候用
