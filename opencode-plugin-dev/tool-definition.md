@@ -94,11 +94,13 @@ return {
 
 ### 基础结构
 
+**命名约定：** 单工具多命令模式的工具名建议用 `<插件名>_cli`（如 `git_cli`、`db_cli`），让模型一眼识别这是"统一命令行入口"，且与其他工具区分开。
+
 ```ts
 export const MyPlugin: Plugin = async () => {
   return {
     tool: {
-      cli: tool({
+      my_cli: tool({
         description: "统一命令行工具。执行任意子命令，先用 help 查看用法。",
         args: {
           command: tool.schema.string().describe("子命令名，用 'help' 查看全部用法"),
@@ -134,7 +136,7 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
 1. **`help` 必须返回完整、结构化的用法**（所有子命令、参数、示例），这是模型"自学"的主要途径：
    ```ts
    const HELP_TEXT = `
-   用法: cli <command> [args...]
+   用法: my_cli <command> [args...]
 
    子命令:
      list                列出所有项
@@ -143,8 +145,8 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
      help                显示此帮助
 
    示例:
-     cli list
-     cli add --name "项目A"
+     my_cli list
+     my_cli add --name "项目A"
    `
    ```
 
