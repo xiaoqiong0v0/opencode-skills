@@ -103,10 +103,9 @@ export const MyPlugin: Plugin = async () => {
   return {
     tool: {
       my_cli: tool({
-        description: "统一命令行工具。执行任意子命令，先用 help 查看用法。",
+        description: "统一命令行工具。执行任意子命令，先用 --help 查看用法。",
         args: {
-          command: tool.schema.string().describe("子命令名，用 'help' 查看全部用法"),
-          args: tool.schema.any().optional().describe("参数，空格分隔，如 '--name foo --verbose'"),
+          args: tool.schema.string().optional().describe("命令行字符串：如 'foo --help'"),
         },
         async execute(args, context) {
           return handleCommand(args.command, args.args ?? "", context)
