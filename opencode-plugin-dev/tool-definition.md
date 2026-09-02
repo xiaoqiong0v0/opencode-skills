@@ -152,18 +152,48 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
 
 2. **未知命令时返回 help** —— 让模型从错误中自愈，而不是抛异常。
 
-3. **参数解析要健壮**：手动解析 `--key value` 或复用 `node:util` 的 `parseArgs`：
-   ```ts
-   import { parseArgs } from "node:util"
+### 命令解析库选择
 
-   const { values, positionals } = parseArgs({
-     args: tokens,
-     options: {
-       name: { type: "string" },
-       verbose: { type: "boolean", short: "v" },
-     },
-   })
-   ```
+**不要手写参数解析**（`split(/\s+/)` 会漏掉引号、转义、`--key=value` 等情况）。按复杂度选择现成库：
+
+| 需求 | 推荐 | 特点 |
+|------|------|------|
+| 简单 flag 解析，零依赖 | **`node:util.parseArgs`** ⭐ | Node 内置，Bun 原生兼容，够用 |
+| 极简轻量、只要 flag | `arg` | 300 字节，无依赖 |
+| 复杂子命令结构 | `clipanion` | 真正的子命令框架，类型安全 |
+| 完整 CLI 框架 | `commander`/`yargs` | 重，倾向绑定 `process.argv`，插件场景不推荐 |
+
+**首选 `node:util.parseArgs`**（内置零依赖，解析传入的字符串数组）：
+
+```ts
+import { parseArgs } from "node:util"
+
+function parseTokens(tokens: string[]) {
+  const { values, positionals } = parseArgs({
+    args: tokens,
+    options: {
+      name: { type: "string", short: "n" },
+      verbose: { type: "boolean", short: "v" },
+    },
+    allowPositionals: true,     // 允许位置参数
+  })
+  return { values, positionals }
+}
+// parseTokens(["add", "--name", "foo", "-v"])
+// → values: { name: "foo", verbose: true }, positionals: ["add"]
+```
+
+**复杂子命令用 `clipanion`**（各子命令独立定义参数，类型安全）：
+
+```ts
+import { Command, Option } from "clipanion"
+
+class AddCommand extends Command {
+  static paths = [["add"]]
+  name = Option.String("--name")
+  async execute() { /* ... */ }
+}
+```
 
 ### 何时用 / 何时不用
 
