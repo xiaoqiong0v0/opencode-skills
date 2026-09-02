@@ -92,45 +92,56 @@ return {
 
 ## 单工具多命令模式（CLI 风格）
 
-当插件的操作较多时，推荐**用一个工具承载全部操作，用 `command` 参数区分**，并通过 `help` 子命令向模型返回用法。效果类似命令行 CLI，减少工具数量、集中逻辑、省 token。
+当插件的操作较多时，推荐**用一个工具承载全部操作，传入完整命令行字符串**（`'list'`、`'add --name 项目A'`），通过 `help` 子命令向模型返回用法。效果类似命令行 CLI，减少工具数量、集中逻辑、省 token。
 
 ### 基础结构
 
 **命名约定：** 单工具多命令模式的工具名建议用 `<插件名>_cli`（如 `git_cli`、`db_cli`），让模型一眼识别这是"统一命令行入口"，且与其他工具区分开。
 
 ```ts
+import stringArgv from "string-argv"   // 字符串 → argv 数组（处理引号/转义）
+import { parseArgs } from "node:util"
+
 export const MyPlugin: Plugin = async () => {
   return {
     tool: {
       my_cli: tool({
-        description: "统一命令行工具。执行任意子命令，先用 help 查看用法。",
+        description: "统一命令行工具。传入完整命令行字符串，如 'list' 或 'add --name 项目A'；用 'help' 查看全部用法。",
         args: {
-          args: tool.schema.string().optional().describe("命令行字符串：如 'foo --param'"),
+          args: tool.schema.string().optional().describe("完整命令行字符串，如 'foo --param'；空时默认 'help'"),
         },
         async execute(args, context) {
-          return handleCommand(args.command, args.args ?? "", context)
+          return handleCommand(args.args ?? "help", context)
         },
       }),
     },
   }
 }
 
-async function handleCommand(cmd: string, raw: string, context: ToolContext): Promise<string> {
-  const tokens = raw.trim().split(/\s+/).filter(Boolean)
+async function handleCommand(raw: string, context: ToolContext): Promise<string> {
+  const tokens = stringArgv(raw)         // 正确分词（保留引号内空格）
+  const [cmd, ...rest] = tokens
+  if (!cmd) return HELP_TEXT             // 空命令返回 help
   switch (cmd) {
     case "help":
-      return HELP_TEXT          // 返回完整用法，引导模型正确调用
+      return HELP_TEXT                   // 返回完整用法，引导模型正确调用
     case "list":
       return listItems()
     case "add":
-      return addItem(tokens, context)
+      return addItem(rest, context)
     case "remove":
-      return removeItem(tokens)
+      return removeItem(rest)
     default:
       return `未知命令: ${cmd}\n\n${HELP_TEXT}`   // 未知命令也返回 help，引导自愈
   }
 }
 ```
+
+**关键点：**
+- 工具只暴露**一个 `args` 字符串参数**，模型像写命令行一样调用，`help` 会引导它学会所有用法
+- 用 `string-argv` 把字符串正确分词（`--name "项目 A"` 的引号内空格不会丢），再交给子命令处理
+- 命令从分词结果的**第一个 token** 提取，剩余作为子命令参数
+- `string-argv` 是 npm 依赖，需在插件目录的 `package.json` 中声明（见 [local-plugin.md](local-plugin.md) 依赖管理）
 
 ### 关键设计要点
 
@@ -138,62 +149,63 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
 
    ```ts
    const HELP_TEXT = `
-   用法: my_cli <command> [args...]
+   用法: my_cli <命令行字符串>
 
    子命令:
-     list                列出所有项
-     add --name <n>      添加项
-     remove <id>         删除项
-     help                显示此帮助
+     list                    列出所有项
+     add --name <n>          添加项
+     remove <id>             删除项
+     help                    显示此帮助
 
    示例:
      my_cli list
      my_cli add --name "项目A"
+     my_cli help
    `
    ```
+
 2. **未知命令时返回 help** —— 让模型从错误中自愈，而不是抛异常。
 
 ### 命令解析库选择
 
-**不要手写参数解析**（`split(/\s+/)` 会漏掉引号、转义、`--key=value` 等情况）。按复杂度选择现成库：
+**不要手写参数解析**（`split(/\s+/)` 会漏掉引号、转义、`--key=value` 等情况）。标准做法分两步：**先用分词库把字符串转成数组，再用解析库处理数组**。
 
-| 需求                   | 推荐                                 | 特点                                         |
-| ---------------------- | ------------------------------------ | -------------------------------------------- |
-| 简单 flag 解析，零依赖 | **`node:util.parseArgs`** ⭐ | Node 内置，Bun 原生兼容，够用                |
-| 极简轻量、只要 flag    | `arg`                              | 300 字节，无依赖                             |
-| 复杂子命令结构         | `clipanion`                        | 真正的子命令框架，类型安全                   |
-| 完整 CLI 框架          | `commander`/`yargs`              | 重，倾向绑定`process.argv`，插件场景不推荐 |
+**① 字符串 → 数组（分词）**：主流解析库都要求数组（遵循 Unix argv 约定），没有"直接解析字符串"的库，所以需要分词器：
 
-**首选 `node:util.parseArgs`**（内置零依赖，解析传入的字符串数组）：
+| 分词库 | 特点 |
+|--------|------|
+| `string-argv` | ⭐ 轻量，专为"字符串 → argv 数组"设计，正确处理引号/转义 |
+| `shell-quote` | 更完整，支持通配符展开等 shell 语义 |
+
+**② 数组 → 参数（解析）**：
+
+| 需求 | 推荐 | 特点 |
+|------|------|------|
+| 简单 flag 解析，零依赖 | **`node:util.parseArgs`** ⭐ | Node 内置，Bun 原生兼容，够用 |
+| 极简轻量、只要 flag | `arg` | 300 字节，无依赖 |
+| 复杂子命令结构 | `clipanion` | 真正的子命令框架，类型安全 |
+| 完整 CLI 框架 | `commander`/`yargs` | 重，倾向绑定 `process.argv`，插件场景不推荐 |
+
+**完整组合**（字符串 → 数组 → 解析）：
 
 ```ts
+import stringArgv from "string-argv"
 import { parseArgs } from "node:util"
 
-function parseTokens(tokens: string[]) {
-  const { values, positionals } = parseArgs({
+function run(raw: string) {
+  const tokens = stringArgv(raw)        // 1. 字符串 → 数组（处理引号）
+  const { values, positionals } = parseArgs({  // 2. 用成熟库解析
     args: tokens,
     options: {
       name: { type: "string", short: "n" },
       verbose: { type: "boolean", short: "v" },
     },
-    allowPositionals: true,     // 允许位置参数
+    allowPositionals: true,             // 允许位置参数
   })
   return { values, positionals }
 }
-// parseTokens(["add", "--name", "foo", "-v"])
-// → values: { name: "foo", verbose: true }, positionals: ["add"]
-```
-
-**复杂子命令用 `clipanion`**（各子命令独立定义参数，类型安全）：
-
-```ts
-import { Command, Option } from "clipanion"
-
-class AddCommand extends Command {
-  static paths = [["add"]]
-  name = Option.String("--name")
-  async execute() { /* ... */ }
-}
+// run(`add --name "项目 A"`)
+// → { values: { name: "项目 A" }, positionals: ["add"] }  ✅ 引号内空格保留
 ```
 
 ### 何时用 / 何时不用
