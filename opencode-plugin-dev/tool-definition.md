@@ -166,6 +166,27 @@ async function handleCommand(raw: string, context: ToolContext): Promise<string>
 
 2. **未知命令时返回 help** —— 让模型从错误中自愈，而不是抛异常。
 
+### help 的记忆特性
+
+模型执行一次 `help` 后，输出**保留在会话上下文中**，后续调用可直接使用，**不需要每次先查用法**。这是单工具多命令模式省 token 的关键。
+
+**但 help 记忆会失效：**
+
+| 场景 | 原因 |
+|------|------|
+| 会话被压缩（compaction） | help 细节可能被摘要掉 |
+| 子 agent | 子会话独立，父会话的 help 不共享 |
+| 新会话 | 上下文清空 |
+| 长时间间隔 | help 被挤出上下文窗口 |
+
+**因此：**
+- `description` 里也要写**精简的子命令列表**，让模型在第一次调用前就有初步概念，减少"先 help 再操作"的往返：
+  ```
+  description: "统一命令行工具。子命令: list / add --name / remove / help。用 'help' 看完整用法。"
+  ```
+- help 输出要**精炼但完整**——它是模型长期记忆的"手册"
+- 若插件关键用法被压缩后容易遗忘，可在 `experimental.session.compacting` 钩子中把用法注入压缩摘要（见 [hooks.md](hooks.md)）
+
 ### 命令解析库选择
 
 **不要手写参数解析**（`split(/\s+/)` 会漏掉引号、转义、`--key=value` 等情况）。标准做法分两步：**先用分词库把字符串转成数组，再用解析库处理数组**。
