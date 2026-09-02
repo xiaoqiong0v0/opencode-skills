@@ -100,6 +100,48 @@ try { loadCfg() } catch (e) { log.error("初始化失败", e) }
     └── utils.js
 ```
 
+## 模块加载与进程模型
+
+**OpenCode 的服务端进程和 TUI 进程是两个独立 OS 进程，各自维护自己的 Bun 模块缓存，插件模块会被两个进程各 `import()` 一次。**
+
+```
+服务端进程 ── import(插件模块) ──► 顶层代码执行一次 ──► 调用 default.server()
+TUI 进程   ── import(插件模块) ──► 顶层代码执行一次 ──► 调用 default.tui()
+```
+
+因此：
+
+| 代码位置 | 执行次数 | 原因 |
+|---------|---------|------|
+| 模块顶层（副作用代码） | **2 次** | server + TUI 各执行一次 |
+| 插件函数内部 | **1 次** | 只在 server 进程调用 |
+| 顶层纯变量定义 | 2 份独立实例 | 两个进程各持一份，互不相通 |
+
+### 顶层该放什么
+
+```ts
+import createLogger from "@xiaoqiong0v0/opencode-plugin-logger"
+
+// ✅ 顶层放无副作用的纯定义（函数、常量、logger 实例）——正常
+const log = createLogger("my-plugin")
+const MAX_RETRY = 3
+
+// ⚠️ 顶层放有副作用的操作 —— 会在 server 和 TUI 各执行一次
+// try { loadCfg() } catch (e) { log.error("初始化失败", e) }
+// 如果操作不幂等（重复注册、重复连接），会产生两次副作用
+
+// ✅ 有副作用的初始化放进插件函数内部，保证只执行一次
+export const MyPlugin = async () => {
+  try { loadCfg() } catch (e) { log.error("初始化失败", e) }
+  return { /* hooks */ }
+}
+```
+
+**原则：**
+- 顶层只放**无副作用的纯定义**（函数、常量、logger 实例）
+- 所有**有副作用的初始化**（连接、注册、写状态）放进插件函数或钩子内部
+- 若必须在顶层做有副作用操作，要保证**幂等**（重复执行无额外影响）
+
 ## 注意
 
 - 修改插件文件后**重启 OpenCode** 或重新加载配置即可生效

@@ -90,6 +90,7 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 ## 开发原则
 
 - **不知道怎么实现时，去看源码**：OpenCode 是开源项目（[github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)），type 定义在 `node_modules/@opencode-ai/plugin/dist/` 和 `@opencode-ai/sdk/dist/` 中。不确定 API 签名、事件字段、context 类型时，直接读对应版本的 `.d.ts` 文件，不要凭记忆或猜测写代码。
+- **了解进程模型**：server 和 TUI 是两个独立进程，各 `import()` 插件一次。模块顶层副作用代码会执行两次，插件函数内部只执行一次。顶层只放无副作用定义，有副作用的初始化放函数内（见 [local-plugin.md](local-plugin.md) 的"模块加载与进程模型"章节）。
 - 插件代码中使用 `console.log` 调试，输出在 TUI 或日志中可见。
 
 ## 重要原则
