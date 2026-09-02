@@ -30,21 +30,22 @@ export const CustomToolsPlugin: Plugin = async (ctx) => {
 
 `execute` 函数的第二个参数 `context` 包含以下字段：
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `sessionID` | `string` | 当前会话 ID |
-| `messageID` | `string` | 触发消息 ID |
-| `callID` | `string` | 工具调用 ID |
-| `agent` | `string` | 代理类型（`build`/`general`/`pro`/`explore`） |
-| `directory` | `string` | 项目工作目录 |
-| `worktree` | `string` | Git 工作树路径 |
-| `abort` | `AbortSignal` | 取消信号，支持超时/手动取消 |
-| `extra` | `object` | 模型信息（`model.id`、`model.providerID` 等） |
-| `time` | `number` | 时间戳 |
-| `metadata({ title, metadata })` | `function` | 设置工具结果标题和附加元数据 |
-| `ask(input)` | `function` | 运行时向用户询问权限（`{ permission, patterns, always, metadata }`） |
+| 字段                              | 类型            | 说明                                                                   |
+| --------------------------------- | --------------- | ---------------------------------------------------------------------- |
+| `sessionID`                     | `string`      | 当前会话 ID                                                            |
+| `messageID`                     | `string`      | 触发消息 ID                                                            |
+| `callID`                        | `string`      | 工具调用 ID                                                            |
+| `agent`                         | `string`      | 代理类型（`build`/`general`/`pro`/`explore`）                  |
+| `directory`                     | `string`      | 项目工作目录                                                           |
+| `worktree`                      | `string`      | Git 工作树路径                                                         |
+| `abort`                         | `AbortSignal` | 取消信号，支持超时/手动取消                                            |
+| `extra`                         | `object`      | 模型信息（`model.id`、`model.providerID` 等）                      |
+| `time`                          | `number`      | 时间戳                                                                 |
+| `metadata({ title, metadata })` | `function`    | 设置工具结果标题和附加元数据                                           |
+| `ask(input)`                    | `function`    | 运行时向用户询问权限（`{ permission, patterns, always, metadata }`） |
 
 **注意：**
+
 - `metadata` 在某些 OpenCode 版本中可能为 `undefined`，调用时建议使用可选链：`context.metadata?.({ title: "结果" })`。
 - `execute` 的 context 中**没有** `parentID`。需要跟踪父子会话关系，请通过 `session.created` 事件监听（见 [hooks.md](hooks.md) 的会话管理章节）。
 
@@ -61,6 +62,7 @@ tool.schema.array(tool.schema.string())  // 数组
 ```
 
 每个类型后可以链式调用：
+
 - `.optional()` — 可选参数
 - `.default(val)` — 默认值
 - `.describe("说明")` — 参数说明（模型据此理解参数含义）
@@ -104,7 +106,7 @@ export const MyPlugin: Plugin = async () => {
         description: "统一命令行工具。执行任意子命令，先用 help 查看用法。",
         args: {
           command: tool.schema.string().describe("子命令名，用 'help' 查看全部用法"),
-          args: tool.schema.string().optional().describe("参数，空格分隔，如 '--name foo --verbose'"),
+          args: tool.schema.any().optional().describe("参数，空格分隔，如 '--name foo --verbose'"),
         },
         async execute(args, context) {
           return handleCommand(args.command, args.args ?? "", context)
@@ -134,6 +136,7 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
 ### 关键设计要点
 
 1. **`help` 必须返回完整、结构化的用法**（所有子命令、参数、示例），这是模型"自学"的主要途径：
+
    ```ts
    const HELP_TEXT = `
    用法: my_cli <command> [args...]
@@ -149,19 +152,18 @@ async function handleCommand(cmd: string, raw: string, context: ToolContext): Pr
      my_cli add --name "项目A"
    `
    ```
-
 2. **未知命令时返回 help** —— 让模型从错误中自愈，而不是抛异常。
 
 ### 命令解析库选择
 
 **不要手写参数解析**（`split(/\s+/)` 会漏掉引号、转义、`--key=value` 等情况）。按复杂度选择现成库：
 
-| 需求 | 推荐 | 特点 |
-|------|------|------|
-| 简单 flag 解析，零依赖 | **`node:util.parseArgs`** ⭐ | Node 内置，Bun 原生兼容，够用 |
-| 极简轻量、只要 flag | `arg` | 300 字节，无依赖 |
-| 复杂子命令结构 | `clipanion` | 真正的子命令框架，类型安全 |
-| 完整 CLI 框架 | `commander`/`yargs` | 重，倾向绑定 `process.argv`，插件场景不推荐 |
+| 需求                   | 推荐                                 | 特点                                         |
+| ---------------------- | ------------------------------------ | -------------------------------------------- |
+| 简单 flag 解析，零依赖 | **`node:util.parseArgs`** ⭐ | Node 内置，Bun 原生兼容，够用                |
+| 极简轻量、只要 flag    | `arg`                              | 300 字节，无依赖                             |
+| 复杂子命令结构         | `clipanion`                        | 真正的子命令框架，类型安全                   |
+| 完整 CLI 框架          | `commander`/`yargs`              | 重，倾向绑定`process.argv`，插件场景不推荐 |
 
 **首选 `node:util.parseArgs`**（内置零依赖，解析传入的字符串数组）：
 
@@ -197,11 +199,11 @@ class AddCommand extends Command {
 
 ### 何时用 / 何时不用
 
-| 场景 | 建议 |
-|------|------|
-| 操作多（>4 个）且共享状态/资源 | ✅ 单工具多命令 |
-| 操作少且相互独立 | ❌ 拆成多个工具更清晰 |
-| 需要模型并行调用不同操作 | ⚠️ 单工具会互相排队 |
+| 场景                                               | 建议                        |
+| -------------------------------------------------- | --------------------------- |
+| 操作多（>4 个）且共享状态/资源                     | ✅ 单工具多命令             |
+| 操作少且相互独立                                   | ❌ 拆成多个工具更清晰       |
+| 需要模型并行调用不同操作                           | ⚠️ 单工具会互相排队       |
 | 参数差异大（如 add 需要 5 个参数，list 只要 1 个） | ✅ 单工具 + help 引导最合适 |
 
 **原则：** 工具数量控制在 2 个以内（一个主工具 + 一个可选辅助）。多于 2 个时，考虑合并为单工具多命令。
