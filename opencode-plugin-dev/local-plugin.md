@@ -142,6 +142,72 @@ export const MyPlugin = async () => {
 - 所有**有副作用的初始化**（连接、注册、写状态）放进插件函数或钩子内部
 - 若必须在顶层做有副作用操作，要保证**幂等**（重复执行无额外影响）
 
+### 幂等的保证方式
+
+幂等的本质是**重复执行的结果与执行一次相同**。插件场景按层次分三种做法：
+
+**① 进程内防重复（内存标志）** — 只防同一进程内重复，无法跨进程：
+
+```ts
+let initialized = false
+
+export const MyPlugin = async () => {
+  if (initialized) return {}   // 已初始化直接返回
+  initialized = true
+  // 真正初始化...
+  return { /* hooks */ }
+}
+```
+
+**② 防重复注册（去重 / 先解绑再绑定）** — 应对 hook 回调被 `reload()` 多次触发：
+
+```ts
+const registered = new Set<string>()
+
+async function registerOnce(name: string, fn: () => void) {
+  if (registered.has(name)) return
+  registered.add(name)
+  // 注册逻辑
+}
+```
+
+**③ 跨进程幂等（文件锁 / 原子操作 / 状态检查）** — **保证真正幂等的关键**，server/TUI 不同进程内存不共享，必须用外部状态：
+
+```ts
+import { mkdirSync } from "node:fs"
+import os from "node:os"
+import path from "node:path"
+
+const lockPath = path.join(os.tmpdir(), "my-plugin-init.lock")
+
+// mkdir 是原子操作——谁先创建成功谁就拿到锁
+try {
+  mkdirSync(lockPath)           // 已存在会抛错
+  await doExpensiveInit()       // 只有拿到锁的进程执行
+} catch {
+  // 另一个进程已初始化，跳过
+}
+```
+
+其他跨进程手段：
+- **写文件**：先 `existsSync` 检查，或用 `writeFileSync(flag: "wx")`（不存在才创建）
+- **连接服务**：先探测端口/连接状态，已连接则复用
+- **数据库**：`INSERT ... ON CONFLICT DO NOTHING`（upsert）
+- **启动子进程**：先检查进程是否已存在
+
+**操作幂等性判断表：**
+
+| 操作 | 幂等？ | 处理 |
+|------|--------|------|
+| 读配置/读文件 | ✅ 天然幂等 | 顶层放也没事 |
+| 定义常量/函数 | ✅ 天然幂等 | 顶层随便放 |
+| 注册 hook 回调 | ⚠️ 重复会叠加 | 去重 / 先解绑 |
+| 写文件/建目录 | ⚠️ 重复会冲突 | 原子标志 / 先检查 |
+| 连接服务/启动进程 | ❌ 重复会重复连 | 锁 / 状态检查 |
+| 发通知/埋点 | ❌ 重复会重复发 | dedupe |
+
+**结论：** 大部分场景把有副作用的初始化从顶层挪进插件函数内部（每进程只调一次）就够；只有当同一操作可能被**跨进程**或**多次事件**触发时，才需要文件锁/状态检查这类真正幂等的机制。
+
 ## 注意
 
 - 修改插件文件后**重启 OpenCode** 或重新加载配置即可生效
