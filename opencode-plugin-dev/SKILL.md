@@ -90,7 +90,7 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 ## 开发原则
 
 - **不知道怎么实现时，去看源码**：OpenCode 是开源项目（[github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)），type 定义在 `node_modules/@opencode-ai/plugin/dist/` 和 `@opencode-ai/sdk/dist/` 中。不确定 API 签名、事件字段、context 类型时，直接读对应版本的 `.d.ts` 文件，不要凭记忆或猜测写代码。
-- **了解进程/实例模型**：插件状态分三层缓存维度——**进程级**（模块顶层变量，Bun 模块缓存保证同进程只 import 一次）、**目录级**（插件函数体 + hooks 闭包，`InstanceState` 按工作目录缓存，同目录多会话共享、切目录产生新闭包）、**事件级**（hook 回调每次触发执行）。server 和 TUI 是两个独立进程，各自执行一遍顶层代码。顶层只放无副作用定义，有副作用的初始化放函数内（见 [local-plugin.md](local-plugin.md) 的"模块加载与进程模型"章节）。
+- **了解进程/实例模型**：插件状态分三层缓存维度——**进程级**（模块顶层变量，Bun 模块缓存保证整个进程只 import 一次）、**目录级**（插件函数体 + hooks 闭包，按"opencode 当前打开的项目工作目录"缓存：同目录会话共享、切换项目产生新闭包）、**事件级**（hook 回调每次触发执行）。server 和 TUI 是两个独立进程，各自执行一遍顶层代码。顶层只放无副作用定义，有副作用的初始化放函数内（见 [local-plugin.md](local-plugin.md) 的"模块加载与进程模型"章节）。
 - 插件代码中使用 `console.log` 调试，输出在 TUI 或日志中可见。
 
 ## 重要原则
