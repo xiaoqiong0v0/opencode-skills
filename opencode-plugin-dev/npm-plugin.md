@@ -72,29 +72,79 @@ npm publish --access public
 
 ## 本地测试与热覆盖
 
-发布前本地测试已发布的 npm 插件，无需反复 `npm version patch && npm publish`。核心思路：构建本地代码后覆盖 OpenCode 的包缓存。
+发布前本地测试已发布的 npm 插件，无需反复 `npm version patch && npm publish`。核心逻辑：
+
+1. `npm run build` 构建本地代码
+2. 把 `dist/` + `package.json` 覆盖到 OpenCode 包缓存（**两个路径都要覆盖**，可能从任意一个加载）
+3. **同步依赖**：插件 `package.json` 里声明的 `dependencies`，若外层 node_modules 缺失或版本不同，从本地拷贝
 
 ```powershell
-# 1. 本地构建
+# .tmp/publish-local.ps1
+$ErrorActionPreference = "Stop"
+
+# 按插件 package.json 的 dependencies，只拷贝本地有、外层缺失或版本不同的依赖
+function Sync-Dependencies {
+  param([string]$PkgJson, [string]$LocalNode, [string]$OuterNode)
+  $deps = (Get-Content $PkgJson -Raw | ConvertFrom-Json).dependencies
+  if (-not $deps) { return }
+  foreach ($name in $deps.PSObject.Properties.Name) {
+    $localPkg = Join-Path $LocalNode $name
+    if (-not (Test-Path (Join-Path $localPkg "package.json"))) { continue }
+
+    $localVer = (Get-Content (Join-Path $localPkg "package.json") -Raw | ConvertFrom-Json).version
+    $outerPkg = Join-Path $OuterNode $name
+    $need = $true
+    if (Test-Path (Join-Path $outerPkg "package.json")) {
+      $outerVer = (Get-Content (Join-Path $outerPkg "package.json") -Raw | ConvertFrom-Json).version
+      $need = ($localVer -ne $outerVer)   # 版本不同才同步
+    }
+    if ($need) {
+      $destParent = Split-Path $outerPkg -Parent
+      New-Item -ItemType Directory -Force -Path $destParent | Out-Null
+      Copy-Item -Recurse -Force $localPkg $outerPkg
+    }
+  }
+}
+
+Write-Host "Building..." -ForegroundColor Cyan
 npm run build
 
-# 2. 覆盖 OpenCode 包缓存（两个路径都要覆盖）
+$localNode = Join-Path (Get-Location) "node_modules"
+
+# 覆盖 opencode 已安装的插件包缓存（按实际参考的包名替换）
+$pkg = "@scope/plugin-name"
 $scopes = @(
-  "$env:USERPROFILE\.cache\opencode\packages\@scope\plugin-name@latest\node_modules\@scope\plugin-name",
-  "$env:USERPROFILE\.cache\opencode\packages\@scope\plugin-name\node_modules\@scope\plugin-name"
+  "$env:USERPROFILE\.cache\opencode\packages\$pkg@latest\node_modules\$pkg",
+  "$env:USERPROFILE\.cache\opencode\packages\$pkg\node_modules\$pkg"
 )
 
+$copied = $false
 foreach ($dest in $scopes) {
   if (Test-Path $dest) {
     Copy-Item -Recurse -Force "dist" "$dest\"
-    Write-Host "覆盖完成: $dest\dist" -ForegroundColor Green
+    Copy-Item -Force "package.json" "$dest\package.json"
+
+    # 外层 node_modules（依赖应放这里，保证插件 import 可解析）
+    # dest 结构: <scopeRoot>\node_modules\<scope>\pkg，上溯 3 级 = scopeRoot
+    $scopeRoot = Split-Path (Split-Path (Split-Path $dest -Parent) -Parent) -Parent
+    $outer = Join-Path $scopeRoot "node_modules"
+    New-Item -ItemType Directory -Force -Path $outer | Out-Null
+    Sync-Dependencies -PkgJson (Join-Path $dest "package.json") -LocalNode $localNode -OuterNode $outer
+
+    Write-Host "覆盖完成: $dest (dist + package.json + deps)" -ForegroundColor Green
+    $copied = $true
   }
+}
+
+if (-not $copied) {
+  Write-Host "未找到 opencode 插件安装目录，请先确认插件已在 opencode.json 引用并启动过一次。" -ForegroundColor Yellow
 }
 
 # 3. 重启 OpenCode 使插件生效
 ```
 
-**注意：** 两个路径都必须覆盖，OpenCode 可能从任意一个路径加载。
+**为什么依赖要同步到外层 node_modules？**
+OpenCode 安装 npm 插件时，依赖放在包缓存的**外层** `node_modules`（而非插件目录内），插件通过 `file://` URL import 时依赖从外层解析。本地覆盖只复制 `dist` 不改依赖，会导致插件 `import` 第三方包失败；若本地用了新版本依赖而缓存里是旧版，行为也会不一致。
 
 ## 注意事项
 
