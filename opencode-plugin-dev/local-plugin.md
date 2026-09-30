@@ -216,6 +216,49 @@ try {
 
 **结论：** 大部分场景把有副作用的初始化从顶层挪进插件函数内部（目录级，同目录一次）就够；只有当同一操作可能被**跨进程**（server/TUI）或**跨目录**触发时，才需要文件锁/状态检查这类真正幂等的机制。
 
+## 启动性能：不要阻塞
+
+OpenCode 启动时**串行 `await`** 加载每个插件（`bootstrap.run` → `applyPlugin`）。插件函数体里任何耗时操作都会**直接累加到启动时间里**——多个插件各慢 1 秒，启动就慢好几秒。
+
+```ts
+// ❌ 错误：阻塞启动
+export const MyPlugin = async () => {
+  const cfg = await loadHugeConfig()      // 读大文件，慢
+  await connectToRemoteServer()           // 网络请求，更慢
+  return { /* hooks */ }
+}
+
+// ✅ 正确：函数体只做同步注册，耗时任务丢后台
+export const MyPlugin = async () => {
+  void init()                             // 不 await，后台异步跑，不阻塞启动
+  return { /* hooks */ }
+}
+
+let cfg: Config | undefined
+async function init() {
+  try {
+    cfg = await loadHugeConfig()
+    await connectToRemoteServer()
+  } catch (e) {
+    log.error("后台初始化失败", e)
+  }
+}
+```
+
+**要点：**
+- **不要 `await` 耗时操作**：用 `void asyncFn()` 或 `queueMicrotask(...)` 让它后台跑
+- **延迟初始化（lazy）**：非必需的东西等第一次真正用到时再初始化（比如在 tool 的 `execute` 里或 hook 回调里）
+- **用事件代替启动时探测**：需要感知运行状态的，监听 `session.idle` / `session.created` 等事件，而不是启动时同步等待
+- **后台初始化要幂等 + 容错**：后台任务失败不能让插件崩溃，用 `try/catch` 记日志（见上文"幂等的保证方式"）
+- **注意时序**：后台初始化未完成时，hook 回调可能已到达——要么在回调里检查就绪状态，要么把依赖项也 lazy 化
+
+**慢操作清单（都别在启动路径上 `await`）：**
+- 读大文件 / 递归扫描目录
+- 网络请求、API 调用
+- 起子进程 / `$` shell 命令
+- 数据库连接、大查询
+- 加载重量级依赖（把 `import` 放函数体内做动态引入）
+
 ## 注意
 
 - 修改插件文件后**重启 OpenCode** 或重新加载配置即可生效
