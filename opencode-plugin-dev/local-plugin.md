@@ -2,10 +2,19 @@
 
 ## 放置位置
 
-- **全局**：`~/.config/opencode/plugins/*.js`（所有项目可用）
-- **项目级**：`.opencode/plugins/*.js`（仅当前项目）
+- **全局**：`~/.config/opencode/plugin/` 或 `~/.config/opencode/plugins/`（所有项目可用）
+- **项目级**：`.opencode/plugin/` 或 `.opencode/plugins/`（仅当前项目）
 
-自动加载，无需在 `opencode.json` 中注册。
+单数 `plugin/` 与复数 `plugins/` **两种目录名都会自动加载**（opencode 按 `{plugin,plugins}/*.{ts,js}` 扫描这两个目录）。
+
+**放进插件目录即自动加载，不要再把它写进 `opencode.json` 的 `plugin` 数组** —— 配置里的 `plugin` 数组是给 **npm 包 / 远程 spec** 用的（见 [npm-plugin.md](npm-plugin.md)）。本地文件重复登记虽然会按文件 URL 去重（不会加载两次），但纯属多余，而且一旦路径写错就会让 opencode 报「找不到模块 / 加载失败」。
+
+### ⚠️ 踩坑反例（真实事故）
+
+1. **产物没生成到插件目录**：插件源不是手写文件，而是由模板 / 构建脚本生成，只改了源、**没执行生成步骤** ⇒ 插件目录下没有该文件 ⇒ 自动发现不到；若配置数组里又写了它的路径，opencode 会直接报加载失败。
+2. **又写进 `plugin` 数组**：文件已在插件目录下自动加载，再往数组里加一遍是多余的（本地文件只靠目录加载，数组只留给 npm 包）。
+
+> 去重规则：同一**本地文件**重复登记会按精确 `file://` URL 去重；同一 **npm 包名**也只加载一次。但一个本地文件与同名 npm 包会被各自加载。
 
 ## 依赖管理
 

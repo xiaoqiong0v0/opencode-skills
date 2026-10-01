@@ -18,7 +18,7 @@ description: OpenCode 插件开发：创建自定义工具、事件钩子、本�
 ## 快速示例
 
 ```ts
-// ~/.config/opencode/plugins/my-plugin.js
+// ~/.config/opencode/plugin/my-plugin.js
 import { tool } from "@opencode-ai/plugin"
 
 export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
@@ -43,11 +43,11 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 
 | 路径 | 用途 | 优先级 |
 |------|------|--------|
-| `~/.config/opencode/plugins/*.js` | 全局本地插件（自动加载） | 高 |
-| `.opencode/plugins/*.js` | 项目级本地插件（自动加载） | 低 |
-| `opencode.json` 的 `plugin` 数组 | npm 插件引用 | — |
+| `~/.config/opencode/plugin/`、`~/.config/opencode/plugins/` | 全局本地插件（自动加载） | 高 |
+| `.opencode/plugin/`、`.opencode/plugins/` | 项目级本地插件（自动加载） | 低 |
+| `opencode.json` 的 `plugin` 数组 | npm 包 / 远程插件引用 | — |
 
-本地插件自动加载，无需注册。npm 插件在 `opencode.json` 中添加包名后自动安装。
+本地插件放进插件目录（单数 `plugin/` 或复数 `plugins/` 都可以）即**自动加载，无需注册**；**不要**再写进 `opencode.json` 的 `plugin` 数组，该数组只用于 **npm 包 / 远程 spec**。常见误用（产物没生成、数组里重复登记）见 [local-plugin.md](local-plugin.md) 的「踩坑反例」。
 
 ### 技能发现路径
 
@@ -68,8 +68,8 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 
 1. **全局配置文件** `~/.config/opencode/opencode.json` 中的 `plugin` 数组
 2. **项目配置文件** `opencode.json` 中的 `plugin` 数组
-3. **全局插件目录** `~/.config/opencode/plugins/`
-4. **项目插件目录** `.opencode/plugins/`
+3. **全局插件目录** `~/.config/opencode/plugin/`（或 `plugins/`）
+4. **项目插件目录** `.opencode/plugin/`（或 `plugins/`）
 
 同名 npm 包只加载一次；本地插件和同名的 npm 插件各自独立加载。插件可通过 V2 API 在运行时动态注册/卸载技能和命令（见 [v2-plugin.md](references/v2-plugin.md)）。
 
