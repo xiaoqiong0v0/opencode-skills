@@ -111,5 +111,6 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 3. **依赖管理**：本地插件如需外部包，在配置目录下创建 `package.json`，OpenCode 启动时自动 `bun install`。
 4. **调试技巧**：插件中的 `console.log` 输出可以在 OpenCode 的 TUI 或日志中查看。修改插件后重启 OpenCode 或重载插件目录即可生效。
 5. **config 钩子**：V1 插件的 `config` 钩子可修改运行时的配置对象，常用于动态注册命令（`config.command`），见 [v2-plugin.md](references/v2-plugin.md) 的 CommandHooks 章节。**哪些字段能动态改、哪些不能**（及其版本与可信度标注）见 [hooks.md](hooks.md) 的「config 钩子：能力边界」。
+6. **导出形态**：只要插件文件里还有别的具名导出（纯函数/测试辅助），默认导出就**必须**是 V1 对象 `{ id, server }`；否则 legacy 加载器会把每个具名导出都当插件工厂调用（轻则 hooks 数量翻倍、重则把 config-provider 链带崩）。纯函数优先放同级 `lib/`（不会被当插件）。详见 [local-plugin.md](local-plugin.md) 的「导出形态」章节。
 
 详细文档：https://opencode.ai/docs/plugins/ (English)

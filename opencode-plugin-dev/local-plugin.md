@@ -67,6 +67,59 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 }
 ```
 
+## ⚠️ 导出形态：默认导出必须是 V1 对象 `{ id, server }`
+
+OpenCode 加载一个插件文件时**先按默认导出试 V1，判不出才回退 legacy**（`plugin/index.ts` 的 `applyPlugin` → `readV1Plugin(..., "detect")`）：
+
+- **V1（推荐）**：`export default { id, server }`，`server()` 返回 hooks 对象。
+- **legacy（旧形态）**：`export default async () => ({...})`，或 `export const MyPlugin = async () => ({...})`。
+
+判定只看**默认导出**：是「对象且含 `id`/`server`/`tui` 之一」就走 V1，否则回退 legacy。
+**本地文件插件（`plugin/*.js`）在 V1 下必须带 `id`**，否则 loader 直接报 `Path plugin ... must export id`（源码 `shared.ts` 的 `resolvePluginId`）。
+
+### 坑：legacy 路径会把**每个具名导出**都当插件工厂调用
+
+legacy 回退的实现（`shared.ts` 的 `getLegacyPlugins`）等价于 `for (const entry of Object.values(mod))` —— 它遍历模块的**所有具名导出**，逐个当插件工厂 `await` 调用并推入 hooks。
+于是只要文件里除了插件本体还导出了**纯函数/常量/测试辅助**，它们也会被当成插件调用：
+
+- 返回值被当 hooks：`hooks` 数量异常偏大（实测 8 个），插件行为错乱但**可能完全不报错**（静默缺陷）；
+- 参数不匹配时直接抛错，典型症状：`date value is not finite in DateTimeFormat format()`（把插件 input 当日期参数）、`plugin config hook failed … (N.config)`，并连带把整条 config-provider 链带崩。
+
+### 推荐做法
+
+1. **只要文件里还有别的具名导出（尤其纯函数/测试辅助），默认导出就必须是 V1 对象 `{ id, server }`** —— V1 命中后**不再走 legacy**，具名导出可以放心保留给离线测试复用。
+2. 更好的做法：把可复用的**纯函数/常量放同级 `lib/`**。loader 只扫描 `{plugin,plugins}/*.{ts,js}`，**`lib/` 不会被当成插件**。
+3. 若必须保留具名导出（如测试要 `import` 纯函数），用上面的 V1 形态即可，无需搬移。
+
+```ts
+// ✅ V1：默认导出对象；具名导出仅作测试复用，不会被当插件
+export function pureHelper() { /* ... */ }
+
+export default {
+  id: "my-plugin",
+  server: async ({ client }) => ({
+    event: async ({ event }) => { /* ... */ },
+  }),
+}
+```
+
+```ts
+// ❌ 旧形态 + 具名导出：pureHelper 会被当成插件工厂调用
+export function pureHelper() { /* ... */ }
+
+export default async () => ({ /* ... */ })
+```
+
+### 验证：要在 Bun 里实测，只 `import` 不算
+
+Node/V8 只 `import` **不会复刻 loader 的调用**，且 V8 与 Bun/JSC 的报错文案不同，容易漏判。要用 Bun 复刻加载判定，统计 `hooks` 数量（应 = 1）。装了 opencode 的话，其二进制自带 Bun：
+
+```bash
+BUN_BE_BUN=1 opencode.exe path/to/probe.mjs   # Windows 上实测可行
+```
+
+> ⚠️ `BUN_BE_BUN=1` 让 opencode 二进制当 Bun 用，是**实测得出**的招数，并非官方文档承诺的接口。
+
 ## 模块初始化陷阱：Temporal Dead Zone（TDZ）
 
 模块顶层的 `const`/`let` 声明存在**暂时性死区（TDZ）**，在声明之前引用会抛出 `ReferenceError`。

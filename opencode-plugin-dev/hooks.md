@@ -114,6 +114,16 @@ hook 的 `input` 携带内容各不相同——尤其**要从 hook 里取模型�
 
 > 版本同「config 钩子」节：opencode `1.18.25`（`v1.18.34` 交叉核对），**未实验验证**。
 
+## hook 运行时实测事实
+
+以下为在 opencode `v1.18.33` 上**实测确认**的行为（非文档推断）：
+
+- `experimental.chat.messages.transform`：`input` 恒为 `{}`；消息在 `output.messages`，其中 `messages[i].info` 带 `sessionID` / `agent`；修改要**原地 push**，不要替换 `output.messages` 引用；`info.synthetic === true` 的消息**不落库**。
+- `experimental.session.compacting`：`input.sessionID` **有值**。
+- `chat.message`：`input` 带 `sessionID`。
+- 消息级去重可用消息 id（`info.id`）；压缩产生的摘要消息带 `info.summary === true`，可作为「这是压缩产物」的标识。
+- 原生**自动压缩在回合循环内**按容量触发 ⇒ 触发那一刻**没有模型回合**，无法在压缩前做插件侧处理。
+
 ## 完整事件列表
 
 ### 会话事件
