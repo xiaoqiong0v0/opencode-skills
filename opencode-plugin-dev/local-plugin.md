@@ -259,6 +259,42 @@ async function init() {
 - 数据库连接、大查询
 - 加载重量级依赖（把 `import` 放函数体内做动态引入）
 
+### 反例：加载期 `await` 一个会超时的操作
+
+最常见的启动阻塞不是"读大文件"，而是**在插件函数体里 `await` 一个可能超时的操作**（等端口、等网络、等另一个进程就绪）。一旦目标没就绪，超时逻辑会让**每次都白等十几秒**；又因为加载是串行的，这段等待直接叠加到 opencode 启动时间上。
+
+```ts
+// ❌ 反例：加载期同步等待一个可能超时的操作
+export const MyPlugin = async () => {
+  const port = await waitForPort(4096, { timeout: 15_000 })  // 目标没起来就白等 15s
+  return { /* hooks */ }
+}
+
+// ✅ 修法：懒加载 + 异步 + 短超时 + 失败即弃
+let conn: Conn | undefined
+async function ensureConn(): Promise<Conn | undefined> {
+  if (conn) return conn
+  try {
+    conn = await connect({ timeout: 500 })   // 短超时，快速失败
+  } catch {
+    return undefined                          // 失败即弃，不缓存错误状态，下次再试
+  }
+  return conn
+}
+
+export const MyPlugin = async () => {
+  void ensureConn()                           // 后台预热，不阻塞启动
+  return {
+    "tool.execute.before": async () => {
+      const c = await ensureConn()            // 真正用到时才等待
+      // ...
+    },
+  }
+}
+```
+
+**通用模式：** 加载期不做任何"可能等待外部就绪"的 `await`；把这类操作改成**懒加载**（首次用到才做）、**异步**（不 `await`）、**短超时**（快速失败）、**失败即弃**（不缓存错误状态、下次重试），并配合就绪检查或事件触发。
+
 ## 注意
 
 - 修改插件文件后**重启 OpenCode** 或重新加载配置即可生效

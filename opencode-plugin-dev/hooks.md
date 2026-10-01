@@ -52,6 +52,68 @@ export const MyPlugin = async () => {
 }
 ```
 
+## config 钩子：能力边界
+
+`config` 钩子在 OpenCode 完成配置加载、但插件正式初始化之前调用，可以**原地修改运行时配置对象**。
+
+**机制（源码依据，opencode `1.18.25`，并以 `v1.18.34` 交叉核对）：**
+
+- `bootstrap` 的顺序是**先 `config.get()` 再 `plugin.init()`**——源码注释原话是「插件会改 config，必须最先初始化」。
+- `hook.config(cfg)` 拿到的**就是同一个对象**（`config.ts:620` 返回 `s.config`，**不拷贝**），因此对它的原地修改会直接影响后续读取。
+
+**判据：某字段的读取点是否在 `config` 钩子之后。** 读取点在钩子之后的字段才能被动态改；在钩子之前就已消费的字段改不动。
+
+**能动态改 ✅**
+
+| 字段 | 说明 |
+|------|------|
+| `command` | 动态注册命令（对照组，最常用） |
+| `provider.*.models.*.cost` | 模型计价 |
+| `provider.*.models.*.limit` | 上下文/输出上限（⚠️ 前提：该 provider **必须已存在**于 `cfg.provider`） |
+| `model` / `small_model` | 默认模型 / 小模型 |
+| `agent.*` | model / prompt / permission / temperature |
+| `permission` / `instructions` / `mcp` / `lsp` / `formatter` | 权限、指令、MCP、LSP、格式化器 |
+
+**不能动态改 ✗**
+
+| 字段 | 原因 | 替代手段 |
+|------|------|---------|
+| `plugin` | 钩子执行前已按 `plugin_origins` 加载完外部插件 | 落配置 + 重启 |
+| `agent.*.tools` | 已废弃；在**配置载入期**就折进 `permission` | 改用 `agent.*.permission` |
+
+**修改请求参数 / 头**不走 `config`，用 `chat.params` / `chat.headers`。
+
+**示例：按运行时条件覆盖某个模型字段**
+
+```ts
+export const MyPlugin = async () => ({
+  config: async (config) => {
+    // 前提：该 provider 必须已存在于 config.provider，才能改它的模型字段
+    const model = config.provider?.myprovider?.models?.["my-model"]
+    if (model && process.env.MY_PLUGIN_OVERRIDE === "1") {
+      model.limit = { context: 200_000, output: 32_000 }
+    }
+  },
+})
+```
+
+> **版本与可信度**：以上结论出自 opencode `1.18.25` 源码，并以 `v1.18.34` tag 交叉核对；**未做实验验证**。使用前建议在目标版本上自行验证。
+
+## 各 hook 的 payload 速查
+
+hook 的 `input` 携带内容各不相同——尤其**要从 hook 里取模型信息**时，不要假设每个 hook 都能拿到完整 `Model`（例如 `limit`）。
+
+| 钩子 | `input` 关键字段 | 能否拿到模型 limit |
+|------|-----------------|-------------------|
+| `chat.params` | 含 `model: Model` | ✅ `model.limit.context` / `model.limit.output` |
+| `chat.headers` | 含 `model` | ✅ |
+| `chat.message` | 只有 `{ providerID, modelID }` | ✗（无 `model` 对象、无 limit） |
+| `experimental.chat.messages.transform` | `input` **恒为 `{}`**，消息在 `output.messages` | ✗ |
+| `experimental.chat.system.transform` | 含 `model` | ✅ |
+| `experimental.compaction.autocontinue` | 含 `model` | ✅ |
+
+> 版本同「config 钩子」节：opencode `1.18.25`（`v1.18.34` 交叉核对），**未实验验证**。
+
 ## 完整事件列表
 
 ### 会话事件
