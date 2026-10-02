@@ -75,20 +75,22 @@ tool.schema.array(tool.schema.string())  // 数组
 
 ## ToolResult
 
-`execute` 函数的返回值可以是字符串或对象：
+`execute` 的返回值**必须是字符串**。宿主（Bun/JSC）把返回内容按字符串处理，返回普通对象会直接报错：`undefined is not an object (evaluating 'c.split')`。
 
 ```ts
-// 简单字符串
+// ✅ 返回字符串
 return "处理完成"
 
-// 结构化结果（附加标题和附件）
-return {
-  title: "查询结果",
-  output: "表格数据...",
-  metadata: { rowCount: 42 },
-  attachments: [{ type: "file", mime: "text/csv", url: "..." }],
-}
+// ✅ 结构化结果：自行 JSON.stringify 或格式化成文本
+return JSON.stringify({ rowCount: 42, rows }, null, 2)
+
+// ❌ 返回普通对象 → 报 undefined is not an object (evaluating 'c.split')
+return { title: "查询结果", output: "表格数据..." }
 ```
+
+例外：带附件的**特殊结果对象**可以返回（如截图工具返回的 image attachment），宿主会识别并按附件处理。
+
+标题 / 附加元数据不要塞进返回对象，用 `context.metadata({ title, metadata })` 设置。
 
 ## 单工具多命令模式（CLI 风格）
 
