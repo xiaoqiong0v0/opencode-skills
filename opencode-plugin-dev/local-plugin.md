@@ -67,6 +67,43 @@ export const MyPlugin: Plugin = async ({ project, client, $, directory, worktree
 }
 ```
 
+## 读取 OpenCode 配置
+
+插件拿运行配置有两条路：**优先用 SDK 的 config API；万不得已自己读文件时，不要硬编码配置文件名。**
+
+### 推荐：用 `client.config`
+
+`PluginInput.client` 就是 OpenCode SDK 客户端，它暴露了配置接口：
+
+```ts
+export const MyPlugin = async ({ client }) => {
+  const config = await client.config.get()   // 已合并完成的运行时配置
+  const { providers, default: defaultModels } = await client.config.providers() // 各 provider + 默认模型
+  // 例：config.provider?.["myprovider"]?.options?.apiKey
+  return { /* hooks */ }
+}
+```
+
+依据：`@opencode-ai/plugin` 的 `PluginInput.client` 类型为 `ReturnType<typeof createOpencodeClient>`（`dist/index.d.ts:36-37`）；SDK 的 `Config` 客户端有 `get` / `providers` 方法（`@opencode-ai/sdk/dist/gen/sdk.gen.d.ts:64-76`），对应服务端路由 `GET /config`、`GET /config/providers`（`groups/config.ts:16-47`，identifier 为 `config.get` / `config.providers`）。`client.config.get()` 返回**已合并的运行时配置**，天然不受"配置写在哪个文件名里"影响。
+
+> 只想在加载期读取/原地修改配置，也可用 `config` 钩子（拿到的就是运行时配置对象，见 [hooks.md](hooks.md) 的「config 钩子：能力边界」）。
+
+### 退路：自己读文件时必须按优先级找，并用 JSONC 解析器
+
+OpenCode 支持多个配置文件名，**不能只认 `opencode.json`**：
+
+- 全局配置按 `config.json` → `opencode.json` → `opencode.jsonc` 顺序合并，**后者覆盖前者**（`packages/opencode/src/config/config.ts:272-274`，源码行号基于 `1.18.25`）。
+- 项目级同时接受 `opencode.json` 与 `opencode.jsonc`（`config.ts:440`；查找目标见 `config/paths.ts:17`）。
+- `.jsonc` 是**原生支持**的：OpenCode 用 `jsonc-parser` 解析，允许注释与尾逗号（`config/parse.ts:3,8-10`，`allowTrailingComma: true`）。
+
+自己读文件时的正确做法：按上述优先级依次尝试候选文件名，命中即用；解析必须用 JSONC 解析器（如 `jsonc-parser`），**不要用 `JSON.parse` 硬吃 `.jsonc`**（注释/尾逗号会直接抛错）。能用上面的 `client.config` 时就别自己读文件。
+
+### 症状：硬编码文件名 ⇒ 静默失效
+
+硬编码 `readFileSync(".../opencode.json")` 这类写法，在只产出 `opencode.jsonc` 的环境里**不报错**（读不到往往被 `try/catch` 吞掉或返回 `{}`），只是相关字段解析不到，最终表现为功能"未设置 / 未启用"，排查时很容易误判成功能本身坏了。
+
+> 真实案例：某插件硬编码只读 `opencode.json` 取 provider 凭据，在只产出 `opencode.jsonc` 的环境里凭据解析不到，功能**静默**显示为"未设置"（全程不抛错）。
+
 ## ⚠️ 导出形态：默认导出必须是 V1 对象 `{ id, server }`
 
 OpenCode 加载一个插件文件时**先按默认导出试 V1，判不出才回退 legacy**（`plugin/index.ts` 的 `applyPlugin` → `readV1Plugin(..., "detect")`）：
