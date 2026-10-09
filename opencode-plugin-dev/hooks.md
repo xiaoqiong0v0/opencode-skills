@@ -107,7 +107,7 @@ hook 的 `input` 携带内容各不相同——尤其**要从 hook 里取模型�
 |------|-----------------|-------------------|
 | `chat.params` | 含 `model: Model` | ✅ `model.limit.context` / `model.limit.output` |
 | `chat.headers` | 含 `model` | ✅ |
-| `chat.message` | 只有 `{ providerID, modelID }` | ✗（无 `model` 对象、无 limit） |
+| `chat.message` | `{ sessionID, agent, model: { providerID, modelID } }`（实测） | ✗（`model` 无 limit） |
 | `experimental.chat.messages.transform` | `input` **恒为 `{}`**，消息在 `output.messages` | ✗ |
 | `experimental.chat.system.transform` | 含 `model` | ✅ |
 | `experimental.compaction.autocontinue` | 含 `model` | ✅ |
@@ -123,6 +123,15 @@ hook 的 `input` 携带内容各不相同——尤其**要从 hook 里取模型�
 - `chat.message`：`input` 带 `sessionID`。
 - 消息级去重可用消息 id（`info.id`）；压缩产生的摘要消息带 `info.summary === true`，可作为「这是压缩产物」的标识。
 - 原生**自动压缩在回合循环内**按容量触发 ⇒ 触发那一刻**没有模型回合**，无法在压缩前做插件侧处理。
+
+## 用户输入：行首半角 `!` = shell 模式（不可禁用）
+
+opencode TUI 把**半角 `!` 键**绑定为 shell 模式：光标在**首字符（offset 0）**时按 `!` → 进入 shell 模式，**回车直接 spawn 执行**，且**不走权限确认**（源码 `packages/tui/src/component/prompt/index.tsx:829-841`；执行走 `packages/opencode/src/session/prompt.ts` 的 `shellImpl`；记成 tool `bash`）。
+
+- 该绑定**不可通过 `keybinds` 配置禁用**（配置项里没有）。
+- 后果：任何依赖「用户消息以 `!` 开头」的插件/功能都**收不到**这类输入（`!` 被 shell 吃掉，消息到不了 hook）。
+- 规避：换其它前缀字符；或行首改用**全角 `！`**（全角不触发该绑定，实测可正常进入模型与 `chat.message`）。
+- 实测版本：opencode `1.18.x`。
 
 ## 完整事件列表
 

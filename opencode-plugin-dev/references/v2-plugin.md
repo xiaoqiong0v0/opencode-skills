@@ -104,7 +104,7 @@ export const MyPlugin = async () => {
     config: async (config) => {
       config.command = config.command ?? {}
       config.command["my-cmd"] = {
-        template: "执行 {{input}} 并返回结果",
+        template: "执行 $ARGUMENTS 并返回结果",
         description: "自定义命令示例",
         agent: "build",
       }
@@ -113,7 +113,9 @@ export const MyPlugin = async () => {
 }
 ```
 
-命令在 OpenCode TUI 中通过 `/my-cmd` 触发，`{{input}}` 为用户输入的参数。
+命令在 OpenCode TUI 中通过 `/my-cmd` 触发，`$ARGUMENTS` 为用户输入的参数。
+
+> ⚠️ **占位符是 `$ARGUMENTS`，不是 `{{input}}`**：opencode `1.18.x` 实测，命令模板里写 `{{input}}` **不会被替换**（原样保留）；`$ARGUMENTS` 才会被替换成用户输入。旧文档/示例里的 `{{input}}` 是错的。
 
 ### 方式二：V2 command.transform（可增删改查）
 
@@ -150,7 +152,7 @@ export const MyPlugin: Plugin = {
 ```ts
 type CommandInfo = {
   name: string        // 命令名称（用于 / 触发）
-  template: string    // 命令模板（支持 {{input}} 占位符）
+  template: string    // 命令模板（支持 $ARGUMENTS 占位符）
   description?: string // 命令描述
   agent?: string      // 指定执行的 agent
   model?: string      // 指定模型
