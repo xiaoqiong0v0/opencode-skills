@@ -1,0 +1,16 @@
+[
+  { "query": "帮我写一个 OpenCode 插件的自定义 tool，用 tool() 定义参数", "should_trigger": true },
+  { "query": "怎么注册 OpenCode 的事件钩子 hook 来拦截工具调用 tool.execute.before", "should_trigger": true },
+  { "query": "本地插件文件应该放哪个目录，~/.config/opencode/plugins/ 还是项目下的 .opencode/plugins/", "should_trigger": true },
+  { "query": "opencode.json 里的 plugin 数组怎么配置本地插件", "should_trigger": true },
+  { "query": "OpenCode 插件的 Zod schema 参数校验和 ToolContext 用法", "should_trigger": true },
+  { "query": "用 @opencode-ai/plugin 的 Plugin 类型写一个带类型安全的插件", "should_trigger": true },
+  { "query": "我想扩展 OpenCode 功能，加个自定义命令并监听文件变更事件", "should_trigger": true },
+  { "query": "插件里怎么修改 LLM 参数或者给 shell 注入环境变量", "should_trigger": true },
+
+  { "query": "把插件发到 npm 怎么发布", "should_trigger": false },
+  { "query": "插件怎么重装或者卸载，更新后没生效", "should_trigger": false },
+  { "query": "怎么安装一个现成的第三方 OpenCode 插件", "should_trigger": false },
+  { "query": "插件发布新版本时版本号该升 minor 还是 patch", "should_trigger": false },
+  { "query": "清理 ~/.cache/opencode/packages 下的插件缓存", "should_trigger": false }
+]

@@ -1,6 +1,6 @@
 ---
 name: opencode-plugin-dev
-description: OpenCode 插件开发：创建自定义工具、事件钩子、本地插件和 npm 插件发布。当用户提到开发/创建/修改/修复 OpenCode 插件、自定义工具（tool）、注册或使用事件钩子（hook）、拦截工具行为（tool.execute.before/after）、将插件发布到 npm、本地插件文件的放置位置（~/.config/opencode/plugins/ 或 .opencode/plugins/）、插件安装方式、opencode.json 中 plugin 数组配置、Plugin 类型导入、tool() 辅助函数、Zod schema 参数校验、ToolContext 使用、插件依赖管理时，必须使用此技能。也包括用户想扩展 OpenCode 功能、添加自定义命令或工具、监听 OpenCode 事件（会话/消息/文件变更/LSP/权限）、修改 LLM 参数或 shell 环境等场景。如果用户问的是"如何使用"现有插件而不是"开发"插件，则不需要触发此技能。
+description: OpenCode 插件开发：创建自定义工具、事件钩子、本地插件。当用户提到开发/创建/修改/修复 OpenCode 插件、自定义工具（tool）、注册或使用事件钩子（hook）、拦截工具行为（tool.execute.before/after）、本地插件文件的放置位置（~/.config/opencode/plugins/ 或 .opencode/plugins/）、opencode.json 中 plugin 数组配置、Plugin 类型导入、tool() 辅助函数、Zod schema 参数校验、ToolContext 使用、插件依赖管理时，必须使用此技能。也包括用户想扩展 OpenCode 功能、添加自定义命令或工具、监听 OpenCode 事件（会话/消息/文件变更/LSP/权限）、修改 LLM 参数或 shell 环境等场景。不适用：第三方插件装卸（走 xqv-plugins-update）、npm 发布与版本产物策略（走 xqv-plugin-release）。如果用户问的是"如何使用"现有插件而不是"开发"插件，则不需要触发此技能。
 ---
 
 # OpenCode 插件开发
