@@ -162,19 +162,6 @@ type CommandInfo = {
 }
 ```
 
-命令的完整结构：
-
-```ts
-type CommandV2Info = {
-  name: string        // 命令名称（用于 / 触发）
-  template: string    // 命令模板（发送给模型的内容）
-  description?: string // 命令描述
-  agent?: string      // 指定 agent
-  model?: ModelRef    // 指定模型
-  subtask?: boolean   // 是否以子任务执行
-}
-```
-
 ## AgentHooks — 管理 Agent
 
 ```ts

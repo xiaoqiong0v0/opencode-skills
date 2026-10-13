@@ -48,7 +48,7 @@ client.app.log(options: {
 })
 ```
 
-## 基本用法
+### 基本用法
 
 ```ts
 export const MyPlugin = async ({ client }) => {
@@ -67,7 +67,7 @@ export const MyPlugin = async ({ client }) => {
 }
 ```
 
-## 日志级别
+### 日志级别
 
 | 级别 | 说明 | 使用场景 |
 |------|------|---------|
@@ -76,7 +76,7 @@ export const MyPlugin = async ({ client }) => {
 | `warn` | 警告 | 潜在问题、性能降级 |
 | `error` | 错误 | 操作失败、异常情况 |
 
-## 参数说明
+### 参数说明
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|

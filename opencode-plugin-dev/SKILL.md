@@ -1,6 +1,6 @@
 ---
 name: opencode-plugin-dev
-description: OpenCode 插件开发：创建自定义工具、事件钩子、本地插件。当用户提到开发/创建/修改/修复 OpenCode 插件、自定义工具（tool）、注册或使用事件钩子（hook）、拦截工具行为（tool.execute.before/after）、本地插件文件的放置位置（~/.config/opencode/plugins/ 或 .opencode/plugins/）、opencode.json 中 plugin 数组配置、Plugin 类型导入、tool() 辅助函数、Zod schema 参数校验、ToolContext 使用、插件依赖管理时，必须使用此技能。也包括用户想扩展 OpenCode 功能、添加自定义命令或工具、监听 OpenCode 事件（会话/消息/文件变更/LSP/权限）、修改 LLM 参数或 shell 环境等场景。不适用：第三方插件装卸（走 xqv-plugins-update）、npm 发布与版本产物策略（走 xqv-plugin-release）。如果用户问的是"如何使用"现有插件而不是"开发"插件，则不需要触发此技能。
+description: OpenCode 插件开发：创建自定义工具、事件钩子、本地插件。当用户提到开发/创建/修改/修复 OpenCode 插件、自定义工具（tool）、注册或使用事件钩子（hook）、拦截工具行为（tool.execute.before/after）、本地插件文件的放置位置（~/.config/opencode/plugins/ 或 .opencode/plugins/）、opencode.json 中 plugin 数组配置、Plugin 类型导入、tool() 辅助函数、Zod schema 参数校验、ToolContext 使用、插件依赖管理时，必须使用此技能。也包括用户想扩展 OpenCode 功能、添加自定义命令或工具、监听 OpenCode 事件（会话/消息/文件变更/LSP/权限）、修改 LLM 参数或 shell 环境等场景。也包括 TUI 插件开发（独立 tui.json 配置、插槽 slot 渲染、热键 keymap、SolidJS 组件、路由/会话 API、常驻 UI）。不适用：第三方插件装卸（走 xqv-plugins-update）、npm 发布与版本产物策略（走 xqv-plugin-release）。如果用户问的是"如何使用"现有插件而不是"开发"插件，则不需要触发此技能。
 ---
 
 # OpenCode 插件开发
@@ -49,6 +49,8 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 
 本地插件放进插件目录（单数 `plugin/` 或复数 `plugins/` 都可以）即**自动加载，无需注册**；**不要**再写进 `opencode.json` 的 `plugin` 数组，该数组只用于 **npm 包 / 远程 spec**。常见误用（产物没生成、数组里重复登记）见 [local-plugin.md](local-plugin.md) 的「踩坑反例」。
 
+> **注意区分两套插件**：以上都是 **server 插件**（走 `opencode.json` 的 `plugin` 或插件目录自动发现）。**TUI 插件是另一套子系统**，走独立的 `tui.json`（`plugin` 数组 + `export default { id, tui }`，SolidJS 渲染 UI），与 server 插件互不相通，别混用。详见 [tui-plugin.md](references/tui-plugin.md)。
+
 ### 技能发现路径
 
 除了本地技能目录，还可以在 `opencode.json` 中配置额外路径：
@@ -86,6 +88,7 @@ export const MyPlugin = async ({ project, client, $, directory, worktree }) => {
 | V2 Plugin API（运行时注册技能/命令/参考） | [v2-plugin.md](references/v2-plugin.md) |
 | 实战示例（通知、.env保护、注入变量、压缩） | [examples.md](references/examples.md) |
 | 结构化日志（client.app.log） | [logging.md](references/logging.md) |
+| TUI 插件（tui.json、插槽、热键、SolidJS 渲染） | [tui-plugin.md](references/tui-plugin.md) |
 
 ## 开发原则
 
