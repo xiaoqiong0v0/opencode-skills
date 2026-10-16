@@ -46,7 +46,7 @@ export const MyPlugin = async () => {
 
     // 工具执行后——可修改结果
     "tool.execute.after": async (input, output) => {
-      output.result = `拦截修改: ${output.result}`
+      output.output = `拦截修改: ${output.output}`
     },
   }
 }
@@ -339,5 +339,5 @@ export const MyPlugin = async () => {
 ## 注意事项
 
 - 事件处理器中不要做耗时操作（如网络请求），否则影响 OpenCode 性能
-- `tool.execute.before` 中修改 `input` 会影响实际执行；不调用则不影响
-- `tool.execute.after` 中修改 `output.result` 会改变返回给用户的内容
+- `tool.execute.before` 中修改 `output.args` 会影响实际执行（`input` 只有 `tool`/`sessionID`/`callID`，改它不影响执行）
+- `tool.execute.after` 中修改 `output.output` 会改变返回给用户的内容
