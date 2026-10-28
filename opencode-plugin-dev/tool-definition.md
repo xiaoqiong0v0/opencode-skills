@@ -307,6 +307,6 @@ description:
 
 ## 注意事项
 
-- `description` 是模型决定是否调用的关键——写清楚工具做什么、什么时候用、有什么副作用（写法见上节「工具描述（description）规范」）
+- `description` 是模型决定是否调用的关键——写清楚工具做什么、什么时候用、有什么副作用（写法见上节，尤其别漏写副作用与「何时别用」）
 - 错误处理：`execute` 内抛出的异常会被 OpenCode 捕获并展示给用户
 - 工具拦截（`tool.execute.before` / `tool.execute.after`）的 `input`/`output` 参数见 [hooks.md](hooks.md)
