@@ -1,6 +1,6 @@
 ---
 name: xqv-skill-creator
-description: 创建、修改、打包 OpenCode 技能（skill / SKILL.md）时使用。当用户说「帮我建个技能 / 把这套流程做成技能 / 改 SKILL.md / 重写技能描述 / 优化技能触发 / 跑技能触发评测 / 打包技能 / 技能目录结构怎么摆」，或要判断某件事该不该做成技能时使用。覆盖：何时建技能还是写进提示词、目录与文件结构、从零到可用（访谈、草稿、测试用例、双路对比、评审迭代）、子代理分工（grader、comparator、analyzer）、安装与打包、自检清单。description 与正文的写作规范见 xqv-prompt-authoring；触发率实测流程与踩坑见 xqv-skill-eval。不适用：改业务代码、写技术文档、单纯使用某个技能完成任务。
+description: 创建、修改、打包 OpenCode 技能（skill / SKILL.md）时使用。当用户说「帮我建个技能 / 把这套流程做成技能 / 改 SKILL.md / 重写技能描述 / 优化技能触发 / 技能该触发没触发、帮我修技能描述和正文 / 跑技能触发评测 / 打包技能 / 技能目录结构怎么摆」，或要判断某件事该不该做成技能时使用。凡改动对象是某个技能的 SKILL.md 及其附属文件（含 description 的触发语料与边界），无论新建还是修补，都归本技能；description 具体写作规范见 xqv-prompt-authoring，触发率实测流程与踩坑见 xqv-skill-eval。不适用：改业务代码、写技术文档、单纯使用某个技能完成任务。
 ---
 
 # 技能创建（xqv-skill-creator）
