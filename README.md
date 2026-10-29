@@ -17,6 +17,7 @@
 | --- | --- |
 | `opencode-plugin-dev` | OpenCode 插件开发：创建自定义工具、事件钩子、本地插件和 npm 插件发布（含 tool()、Zod 参数校验、ToolContext 等） |
 | `wps-api` | WPS Office COM 自动化 API 参考——通过 Python win32com、VBA、VB.NET、JavaScript 控制 WPS 文字、表格、演示 |
+| `xqv-skill-creator` | 创建/修改/打包 OpenCode 技能：何时建技能、目录结构、从零到可用流程、grader/comparator/analyzer 子代理分工、打包自检（触发评测见 xqv-skill-eval，写作规范见 xqv-prompt-authoring） |
 
 ## 维护约定
 
